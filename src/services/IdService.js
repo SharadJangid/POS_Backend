@@ -8,7 +8,7 @@ class IdService {
   constructor() {
     this.storagePath = path.join(__dirname, '../../data/storage.json');
     this.ensureStorageExists();
-    this.currentIp = this.loadIp();
+    this.ipList = this.loadIpList();
   }
 
   /**
@@ -20,50 +20,62 @@ class IdService {
       fs.mkdirSync(dir, { recursive: true });
     }
     if (!fs.existsSync(this.storagePath)) {
-      fs.writeFileSync(this.storagePath, JSON.stringify({ ip: null }, null, 2));
+      fs.writeFileSync(this.storagePath, JSON.stringify({ ips: [] }, null, 2));
     }
   }
 
   /**
-   * Loads the IP from the local JSON file.
+   * Loads the IP list from the local JSON file.
    */
-  loadIp() {
+  loadIpList() {
     try {
       const data = fs.readFileSync(this.storagePath, 'utf8');
       const parsed = JSON.parse(data);
-      return parsed.ip || null;
+      return Array.isArray(parsed.ips) ? parsed.ips : [];
     } catch (err) {
-      console.error('Error loading IP from storage:', err);
-      return null;
+      console.error('Error loading IPs from storage:', err);
+      return [];
     }
   }
 
   /**
-   * Saves the current IP to the local JSON file.
+   * Saves the IP list to the local JSON file.
    */
-  saveIp(ip) {
+  saveIpList(ipList) {
     try {
-      const data = JSON.stringify({ ip }, null, 2);
+      const data = JSON.stringify({ ips: ipList }, null, 2);
       fs.writeFileSync(this.storagePath, data);
     } catch (err) {
-      console.error('Error saving IP to storage:', err);
+      console.error('Error saving IPs to storage:', err);
     }
   }
 
   /**
-   * Updates the current IP and persists it.
+   * Adds or overrides an IP in the list and persists it.
+   * If the IP already exists, it is moved to the end (override effect).
    */
   setIp(newIp) {
-    this.currentIp = newIp;
-    this.saveIp(this.currentIp);
-    return this.currentIp;
+    // Remove if already exists
+    this.ipList = this.ipList.filter(ip => ip !== newIp);
+    // Add to end
+    this.ipList.push(newIp);
+    this.saveIpList(this.ipList);
+    return newIp;
   }
 
   /**
-   * Retrieves the current IP.
+   * Retrieves the most recently set IP (last in the list).
    */
   getIp() {
-    return this.currentIp;
+    if (this.ipList.length === 0) return null;
+    return this.ipList[this.ipList.length - 1];
+  }
+
+  /**
+   * Retrieves all IPs.
+   */
+  getAllIps() {
+    return this.ipList;
   }
 }
 
